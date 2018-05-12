@@ -3,8 +3,11 @@ const int STEERING_CHANNEL = 9;
 const int SPEED_CHANNEL = 10;
 
 // servo and speed controller default states
-int angle = 47;
-int speed = 0;
+volatile int angle = 47;
+volatile int speed = 0;
+
+// interrupt pins
+const int ESTOP_PIN = 2; // 2 and 3 are the only interrupt pins
 
 // String buffer max size
 const int MAX_SIZE = 5;
@@ -13,6 +16,8 @@ const int MAX_SIZE = 5;
 unsigned long prev_time;
 
 const int LED_DELAY = 5;
+
+volatile bool estop_triggered = false;
 
 /**
  * Divides a given PWM pin frequency by a divisor.
@@ -77,6 +82,17 @@ void setPwmFrequency(int pin, int divisor) {
   }
 }
 
+void estop_interrupt()
+{
+    speed = 0;
+    angle = 0;
+    //setSpeed(speed);
+    //setAngle(angle);
+    
+    estop_triggered = true;
+  
+}
+
 void setup()
 {
     Serial.begin(9600);
@@ -84,27 +100,26 @@ void setup()
 
     pinMode(STEERING_CHANNEL, OUTPUT);
     pinMode(SPEED_CHANNEL, OUTPUT);
+    
+    pinMode(ESTOP_PIN, INPUT);
+    attachInterrupt(0, estop_interrupt, HIGH);
 
     prev_time = millis();
 
     delay(100);
-    Serial.println("============================");
-    Serial.println("= Arduino speed controller =");
-    Serial.println("============================");
-    Serial.println("\n*** inputs cannot have line endings ***\n");
 }
 
 void setAngle(int a)
 {
     angle = a;
-    Serial.print("ACK a: ");
+    Serial.print("A:");
     Serial.println(angle);
 }
 
 void setSpeed(int s)
 {
     speed = s;
-    Serial.print("ACK s: ");
+    Serial.print("S:");
     Serial.println(speed);
 }
 
@@ -120,11 +135,24 @@ void processInput(String b)
 
     */
 
-    if (b.length() >= 2 && b.length() <= 4)
+    if (b.length() >= 1 && b.length() <= 4)
     {
         int value = 0;
-
-        if (b.length() == 2)
+        
+        if (b.length() == 1)
+        {
+            if (b[0] == 'r')
+            {
+                estop_triggered = false;
+                Serial.println("R");
+            }
+            else
+            {
+                Serial.println("E:" + b); 
+            }
+            return;
+        }
+        else if (b.length() == 2)
         {
             // set mode
             if (b[0] == 'm')
@@ -132,12 +160,14 @@ void processInput(String b)
                 if (b[1] == 'a')
                 {
                     // autonomous
-                    Serial.println("Setting to autonomous mode");
+                    Serial.println("M:auto");
+                    return;
                 }
                 else if (b[1] == 'm')
                 {
                     // manual mode
-                    Serial.println("Setting to manual mode");
+                    Serial.println("M:man");
+                    return;
                 }
             }
             else if (b[0] == 'a' || b[0] == 's')
@@ -148,7 +178,7 @@ void processInput(String b)
             }
             else
             {
-                Serial.println("ACK e: " + b);
+                Serial.println("E:" + b + '-');
             }
         }
         else if (b.length() == 3)
@@ -170,17 +200,20 @@ void processInput(String b)
         if (b[0] == 'a')
         {
             setAngle(value);
-            Serial.println("Setting angle");
         }
         else if (b[0] == 's')
         {
             setSpeed(value);
-            Serial.println("Setting speed");
         }
+        else
+        {
+             Serial.println("E:" + b + '-'); 
+        }
+        
     }
     else if (b != "")
     {
-        Serial.println("ACK e: " + b);
+        Serial.println("E:" + b + '-');
     }
 }
 
@@ -203,6 +236,7 @@ String readSerialString()
             {
                 count = 0;
                 memset(&buffer[0], 0, sizeof(buffer));
+                Serial.println("E:len");
                 return "";
             }
 
@@ -214,12 +248,6 @@ String readSerialString()
 
         s = String(buffer);
 
-        for (int i = 0; i < count; ++i)
-        {
-            Serial.print("-");
-            Serial.println(buffer[i]);
-        }
-
         // reset buffer
         memset(&buffer[0], 0, sizeof(buffer));
         count = 0;
@@ -230,26 +258,25 @@ String readSerialString()
 
 void loop()
 {
+    while (estop_triggered)
+    {
+         Serial.println("STOP");
+         if (readSerialString() == "r")
+        {
+             Serial.println("RESET");
+             estop_triggered = false;
+        } 
+    }
+  
     String inputString = readSerialString();
 
-    if (inputString != "")
-    {
-        Serial.println("inputString:");
-        Serial.println(inputString);
-    }
-
     processInput(inputString);
+    
+    
+    
+    
     // do stuff here
 
-    /*
-    possible messages:
-    - set speed
-    - set angle
-    - set mode
-        - set interactive/manual control
-        - set autonomous
-    - stop
-    */
 
 
 
@@ -260,8 +287,17 @@ void loop()
     // send heartbeat every 3 seconds
     if (millis() - prev_time >= 3000)
     {
-        Serial.print("HB: ");
+        Serial.print("HB:");
         Serial.println(millis() / 1000);
         prev_time = millis();
+    }
+
+    if (estop_triggered)
+    {
+        digitalWrite(LED_BUILTIN, HIGH);
+    }  
+    else
+    {
+        digitalWrite(LED_BUILTIN, LOW);
     }
 }
