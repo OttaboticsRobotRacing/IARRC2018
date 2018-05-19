@@ -48,8 +48,6 @@ def read_serial():
         return
 
 def write_serial_message(message):
-    connected = False
-
     message = message.encode('ascii')
 
     try:

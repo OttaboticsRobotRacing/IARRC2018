@@ -1,3 +1,15 @@
+/*
+Arduino Master
+
+- process serial commands from computer
+- set car steering angle and speed
+- requests fault pin status from Arduino Slave 0
+- checks for estop interrupt from Arduino Slave 0
+
+*/
+
+#include <Wire.h>
+
 // servo and speed controller pins
 const int STEERING_CHANNEL = 9;
 const int SPEED_CHANNEL = 10;
@@ -18,6 +30,8 @@ unsigned long prev_time;
 const int LED_DELAY = 5;
 
 volatile bool estop_triggered = false;
+
+const int I2C_SLAVE_0_MESSAGE_SIZE = 100;
 
 /**
  * Divides a given PWM pin frequency by a divisor.
@@ -88,9 +102,9 @@ void estop_interrupt()
     angle = 0;
     //setSpeed(speed);
     //setAngle(angle);
-    
+
     estop_triggered = true;
-  
+
 }
 
 void setup()
@@ -100,9 +114,11 @@ void setup()
 
     pinMode(STEERING_CHANNEL, OUTPUT);
     pinMode(SPEED_CHANNEL, OUTPUT);
-    
+
     pinMode(ESTOP_PIN, INPUT);
     attachInterrupt(0, estop_interrupt, HIGH);
+
+    Wire.begin();
 
     prev_time = millis();
 
@@ -138,7 +154,7 @@ void processInput(String b)
     if (b.length() >= 1 && b.length() <= 4)
     {
         int value = 0;
-        
+
         if (b.length() == 1)
         {
             if (b[0] == 'r')
@@ -148,7 +164,7 @@ void processInput(String b)
             }
             else
             {
-                Serial.println("E:" + b); 
+                Serial.println("E:" + b);
             }
             return;
         }
@@ -207,9 +223,9 @@ void processInput(String b)
         }
         else
         {
-             Serial.println("E:" + b + '-'); 
+             Serial.println("E:" + b + '-');
         }
-        
+
     }
     else if (b != "")
     {
@@ -256,6 +272,31 @@ String readSerialString()
     return s;
 }
 
+String get_fault_pin_status()
+{
+    String message = "";
+    Wire.requestFrom(0, I2C_SLAVE_0_MESSAGE_SIZE);
+
+    while (Wire.available())
+    {
+        char c = Wire.read();
+        message += c;
+    }
+
+    return message;
+}
+
+void send_heartbeat()
+{
+    // send heartbeat every 3 seconds
+    if (millis() - prev_time >= 3000)
+    {
+        Serial.print("HB:");
+        Serial.println(millis() / 1000);
+        prev_time = millis();
+    }
+}
+
 void loop()
 {
     while (estop_triggered)
@@ -265,16 +306,16 @@ void loop()
         {
              Serial.println("RESET");
              estop_triggered = false;
-        } 
+        }
     }
-  
+
     String inputString = readSerialString();
 
     processInput(inputString);
-    
-    
-    
-    
+
+
+
+
     // do stuff here
 
 
@@ -284,20 +325,14 @@ void loop()
 
 
 
-    // send heartbeat every 3 seconds
-    if (millis() - prev_time >= 3000)
-    {
-        Serial.print("HB:");
-        Serial.println(millis() / 1000);
-        prev_time = millis();
-    }
-
     if (estop_triggered)
     {
         digitalWrite(LED_BUILTIN, HIGH);
-    }  
+    }
     else
     {
         digitalWrite(LED_BUILTIN, LOW);
     }
+
+    send_heartbeat();
 }
