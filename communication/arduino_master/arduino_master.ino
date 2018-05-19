@@ -199,9 +199,7 @@ void processInput(String b)
             {
                 Serial.println("Getting fault flag");
                 String ff_message = get_fault_pin_status();
-                Serial.print(":");
-                Serial.print(ff_message);
-                Serial.println(":");
+                Serial.println("F:" + ff_message);
                 return;
             }
             else
