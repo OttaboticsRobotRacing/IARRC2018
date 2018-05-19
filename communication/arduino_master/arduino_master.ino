@@ -11,8 +11,11 @@ Arduino Master
 #include <Wire.h>
 
 // servo and speed controller pins
-const int STEERING_CHANNEL = 9;
-const int SPEED_CHANNEL = 10;
+const int STEERING_PIN = 9;
+const int SPEED_PIN = 10;
+
+const int ESC_DIRECTION_PIN = 8;
+const int ESC_RESET_PIN = 7;
 
 // servo and speed controller default states
 volatile int angle = 47;
@@ -31,7 +34,7 @@ const int LED_DELAY = 5;
 
 volatile bool estop_triggered = false;
 
-const int I2C_SLAVE_0_MESSAGE_SIZE = 100;
+const int I2C_SLAVE_0_MESSAGE_SIZE = 2;
 
 /**
  * Divides a given PWM pin frequency by a divisor.
@@ -112,8 +115,8 @@ void setup()
     Serial.begin(9600);
     pinMode(LED_BUILTIN, OUTPUT);
 
-    pinMode(STEERING_CHANNEL, OUTPUT);
-    pinMode(SPEED_CHANNEL, OUTPUT);
+    pinMode(STEERING_PIN, OUTPUT);
+    pinMode(SPEED_PIN, OUTPUT);
 
     pinMode(ESTOP_PIN, INPUT);
     attachInterrupt(0, estop_interrupt, HIGH);
@@ -191,6 +194,15 @@ void processInput(String b)
                 char tmp[1];
                 tmp[0] = b[1];
                 value = atoi(tmp);
+            }
+            else if (b == "ff")
+            {
+                Serial.println("Getting fault flag");
+                String ff_message = get_fault_pin_status();
+                Serial.print(":");
+                Serial.print(ff_message);
+                Serial.println(":");
+                return;
             }
             else
             {
