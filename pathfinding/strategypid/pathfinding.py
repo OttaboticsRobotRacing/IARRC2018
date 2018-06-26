@@ -115,14 +115,25 @@ def get_line_segments(image):
     Find the line segments in the frame using HoughLinesP
     :return:
     """
-    mask_edges = cv2.Canny(image, 0, 200, apertureSize=3)
+
+    image = cv2.GaussianBlur(image, (5, 5), 0)
+    image = cv2.GaussianBlur(image, (5, 5), 0)
+    image = cv2.GaussianBlur(image, (5, 5), 0)
+
+    mask_edges = cv2.Canny(image, 50, 100, apertureSize=3)
 
     # variables for HoughLinesP
 
     # max_line_gap = 20 # default/previous/initial value
+    '''
     max_line_gap = 5
     min_line_length = 50
     threshold = 20
+    '''
+    max_line_gap = 20
+    min_line_length = 5
+    threshold = 1
+
 
     lines = cv2.HoughLinesP(mask_edges, 1, np.pi/180, threshold, min_line_length, max_line_gap)
 
