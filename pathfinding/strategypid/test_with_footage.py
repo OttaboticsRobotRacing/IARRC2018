@@ -36,49 +36,50 @@ def get_line_segments(image):
 
 logging.basicConfig(level=logging.DEBUG)
 
-cap = cv2.VideoCapture('footage/copy_edit.avi')
+video_files = ['footage/3_edit.avi', 'footage/4_edit.avi', 'footage/7_edit.avi', 'footage/8_edit.avi']
 
-q = queue.Queue(maxsize=5)
+for video_file in video_files:
 
-while cap.isOpened():
-    ret, frame = cap.read()
-    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-    cropped = gray[150:, :]
+    cap = cv2.VideoCapture(video_file)
 
-    angle = pathfinding.compute_turn_angle(cropped)
-    print('Output turn angle: %s' % angle)
-    font = cv2.FONT_HERSHEY_SIMPLEX
-    # cv2.putText(gray, str(int(angle)), (10,300), font, 4, (0,255,0), 2, cv2.LINE_AA)
-    # cv2.imshow('gray', gray)
+    q = queue.Queue(maxsize=5)
 
-    try:
-        q.put(angle, block=False)
-    except queue.Full:
-        q.get()
-        q.put(angle, block=False)
-
-    sum = 0
-    for e in list(q.queue):
-        print('q:', e)
-        sum += e
-
-    print('avg angle:', sum/5)
-    cv2.putText(gray, str(int(sum/5)), (10,300), font, 4, (0,255,0), 2, cv2.LINE_AA)
-    cv2.imshow('gray', gray)
-
-    '''
-    cropped = cv2.cvtColor(cropped, cv2.COLOR_GRAY2BGR)
-    line_img = get_line_segments(cropped)
-    cv2.imshow('lines', line_img)
-    '''
+    while cap.isOpened():
+        ret, frame = cap.read()
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        cropped = gray[150:, :]
 
 
-    #cv2.imshow('cropped', cropped)
+        cropped = cv2.cvtColor(cropped, cv2.COLOR_GRAY2BGR)
+        line_img = get_line_segments(cropped)
+        cv2.imshow('lines', line_img)
 
 
-    if cv2.waitKey(100) & 0xFF == ord('q'):
-        break
+        angle = pathfinding.compute_turn_angle(cropped)
+        print('Output turn angle: %s' % angle)
+        font = cv2.FONT_HERSHEY_SIMPLEX
+        # cv2.putText(gray, str(int(angle)), (10,300), font, 4, (0,255,0), 2, cv2.LINE_AA)
+        # cv2.imshow('gray', gray)
+
+        try:
+            q.put(angle, block=False)
+        except queue.Full:
+            q.get()
+            q.put(angle, block=False)
+
+        sum = 0
+        for e in list(q.queue):
+            print('q:', e)
+            sum += e
+
+        print('avg angle:', sum/5)
+        cv2.putText(gray, str(int(sum/5)), (10,300), font, 4, (0,255,0), 2, cv2.LINE_AA)
+        cv2.imshow(video_file, gray)
 
 
-cap.release()
-cv2.destroyAllWindows()
+        if cv2.waitKey(100) & 0xFF == ord('q'):
+            break
+
+
+    cap.release()
+    cv2.destroyAllWindows()
