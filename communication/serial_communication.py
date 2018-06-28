@@ -3,7 +3,8 @@ import time
 import threading
 import queue
 from curtsies import Input # pip3 install curtsies
-import serial_constants
+from . import serial_constants
+import logging
 
 def read_serial_thread(q):
     connected = False
@@ -49,11 +50,12 @@ def read_serial():
 
 def write_serial_message(message):
     message = message.encode('ascii')
+    logging.debug('writing message: %s' % message)
 
     try:
         ser = serial.Serial(serial_constants.SERIAL_PORT, serial_constants.BAUD_RATE, timeout=0)
     except serial.serialutil.SerialException:
-        print('Serial port not found')
+        logging.debug('Serial port not found')
         return
 
     ser.close()

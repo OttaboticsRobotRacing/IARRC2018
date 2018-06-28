@@ -1,5 +1,5 @@
 import cv2
-import constants
+from . import constants
 import numpy as np
 
 

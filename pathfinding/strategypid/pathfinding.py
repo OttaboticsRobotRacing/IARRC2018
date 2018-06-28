@@ -1,8 +1,8 @@
-import constants
+from . import constants
 import cv2
 import numpy as np
 import math
-import utility
+from . import utility
 import logging
 
 
