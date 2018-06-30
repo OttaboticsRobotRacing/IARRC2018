@@ -9,6 +9,7 @@ Arduino Master
 */
 
 #include <Wire.h>
+#include <Servo.h>
 
 // servo and speed controller pins
 const int STEERING_PIN = 9;
@@ -17,8 +18,12 @@ const int SPEED_PIN = 10;
 const int ESC_DIRECTION_PIN = 8;
 const int ESC_RESET_PIN = 7;
 
+// fault flags
+const int FAULT_PIN_0 = 3;
+const int FAULT_PIN_1 = 4;
+
 // servo and speed controller default states
-volatile int angle = 47;
+volatile int angle = 90;
 volatile int speed = 0;
 
 // interrupt pins
@@ -35,6 +40,8 @@ const int LED_DELAY = 5;
 volatile bool estop_triggered = false;
 
 const int I2C_SLAVE_0_MESSAGE_SIZE = 2;
+
+Servo steering_servo;
 
 /**
  * Divides a given PWM pin frequency by a divisor.
@@ -69,34 +76,35 @@ const int I2C_SLAVE_0_MESSAGE_SIZE = 2;
  *   http://forum.arduino.cc/index.php?topic=16612#msg121031
  */
 void setPwmFrequency(int pin, int divisor) {
-  byte mode;
-  if(pin == 5 || pin == 6 || pin == 9 || pin == 10) {
-    switch(divisor) {
-      case 1: mode = 0x01; break;
-      case 8: mode = 0x02; break;
-      case 64: mode = 0x03; break;
-      case 256: mode = 0x04; break;
-      case 1024: mode = 0x05; break;
-      default: return;
+    byte mode;
+    if(pin == 5 || pin == 6 || pin == 9 || pin == 10) {
+        switch(divisor)
+        {
+            case 1: mode = 0x01; break;
+            case 8: mode = 0x02; break;
+            case 64: mode = 0x03; break;
+            case 256: mode = 0x04; break;
+            case 1024: mode = 0x05; break;
+            default: return;
+        }
+        if(pin == 5 || pin == 6) {
+            TCCR0B = TCCR0B & 0b11111000 | mode;
+        } else {
+            TCCR1B = TCCR1B & 0b11111000 | mode;
+        }
+    } else if(pin == 3 || pin == 11) {
+        switch(divisor) {
+            case 1: mode = 0x01; break;
+            case 8: mode = 0x02; break;
+            case 32: mode = 0x03; break;
+            case 64: mode = 0x04; break;
+            case 128: mode = 0x05; break;
+            case 256: mode = 0x06; break;
+            case 1024: mode = 0x07; break;
+            default: return;
+        }
+        TCCR2B = TCCR2B & 0b11111000 | mode;
     }
-    if(pin == 5 || pin == 6) {
-      TCCR0B = TCCR0B & 0b11111000 | mode;
-    } else {
-      TCCR1B = TCCR1B & 0b11111000 | mode;
-    }
-  } else if(pin == 3 || pin == 11) {
-    switch(divisor) {
-      case 1: mode = 0x01; break;
-      case 8: mode = 0x02; break;
-      case 32: mode = 0x03; break;
-      case 64: mode = 0x04; break;
-      case 128: mode = 0x05; break;
-      case 256: mode = 0x06; break;
-      case 1024: mode = 0x07; break;
-      default: return;
-    }
-    TCCR2B = TCCR2B & 0b11111000 | mode;
-  }
 }
 
 void estop_interrupt()
@@ -115,11 +123,16 @@ void setup()
     Serial.begin(9600);
     pinMode(LED_BUILTIN, OUTPUT);
 
-    pinMode(STEERING_PIN, OUTPUT);
+    steering_servo.attach(STEERING_PIN);
     pinMode(SPEED_PIN, OUTPUT);
 
     pinMode(ESTOP_PIN, INPUT);
-    attachInterrupt(0, estop_interrupt, HIGH);
+    attachInterrupt(0, estop_interrupt, LOW);
+
+    pinMode(FAULT_PIN_0, INPUT);
+    pinMode(FAULT_PIN_1, INPUT);
+
+    pinMode(ESC_DIRECTION_PIN, OUTPUT);
 
     Wire.begin();
 
@@ -130,7 +143,11 @@ void setup()
 
 void setAngle(int a)
 {
+    // 90 is straight
+    // 60 left
+    // 130 right
     angle = a;
+    steering_servo.write(angle);
     Serial.print("A:");
     Serial.println(angle);
 }
@@ -138,11 +155,33 @@ void setAngle(int a)
 void setSpeed(int s)
 {
     speed = s;
+    analogWrite(SPEED_PIN, speed);
     Serial.print("S:");
     Serial.println(speed);
 }
 
 // insert interrupt function here
+
+void check_fault_pins()
+{
+
+    if (digitalRead(FAULT_PIN_0) == HIGH && digitalRead(FAULT_PIN_1) == HIGH)
+    {
+        Serial.println("High High - Under voltage");
+    }
+    else if (digitalRead(FAULT_PIN_0) == HIGH && digitalRead(FAULT_PIN_1) == LOW)
+    {
+        Serial.println("High LOW - Over temperature, overheating warning");
+    }
+    else if (digitalRead(FAULT_PIN_0) == LOW && digitalRead(FAULT_PIN_1) == HIGH)
+    {
+        Serial.println ("LOW HIGH - Short circuit");
+    }
+    else if(digitalRead(FAULT_PIN_0) == LOW && digitalRead(FAULT_PIN_1) == LOW)
+    {
+        Serial.println ("LOW LOW - No fault");
+    }
+}
 
 void processInput(String b)
 {
@@ -311,18 +350,22 @@ void loop()
 {
     while (estop_triggered)
     {
-         Serial.println("STOP");
-         if (readSerialString() == "r")
+        Serial.println("STOP");
+        if (readSerialString() == "r")
         {
-             Serial.println("RESET");
-             estop_triggered = false;
+            Serial.println("RESET");
+            estop_triggered = false;
         }
+        delay(1000);
     }
 
     String inputString = readSerialString();
 
     processInput(inputString);
 
+    digitalWrite(ESC_DIRECTION_PIN, HIGH);
+    setAngle(angle);
+    setSpeed(speed);
 
 
 
@@ -331,7 +374,7 @@ void loop()
 
 
 
-
+    check_fault_pins();
 
 
 

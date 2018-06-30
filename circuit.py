@@ -5,8 +5,8 @@ import pathfinding.strategypid.pathfinding as pathfinder
 import logging
 import communication.serial_communication as comm
 
-logging.basicConfig(level=logging.DEBUG)
-cap = cv2.VideoCapture(0)
+#logging.basicConfig(level=logging.DEBUG)
+cap = cv2.VideoCapture(1)
 
 
 # TODO: check for traffic light
@@ -26,7 +26,7 @@ while cap.isOpened():
 
         turn_angle_message = str('a%d' % int(turn_angle))
         comm.write_serial_message(turn_angle_message)
-
+        comm.write_serial_message('s50')
 
         cv2.imshow('frame', frame)
 

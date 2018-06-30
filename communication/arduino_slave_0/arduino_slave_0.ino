@@ -33,7 +33,7 @@ void setup()
 
     pinMode(LED_BUILTIN, OUTPUT);
 
-    digitalWrite(OUTPUT_INTERRUPT_PIN, LOW);
+    digitalWrite(OUTPUT_INTERRUPT_PIN, HIGH);
     Serial.begin(9600);
 
     delay(3000);
@@ -48,8 +48,8 @@ void requestEvent()
     fault_pin_status_message.toCharArray(message_temp, fault_pin_status_message.length());
     Wire.write(message_temp);
     */
-    
-    
+
+
     Wire.write(fault_pin_status_message);
 }
 
@@ -76,14 +76,14 @@ void check_rc()
     if (pwm_trig <= 953 || pwm_trig >= 1113)
     {
         // +/-30 of 983 which is the pwm value when trigger is pressed. The trigger is pressed to run the car.
-        digitalWrite(OUTPUT_INTERRUPT_PIN, HIGH);
+        digitalWrite(OUTPUT_INTERRUPT_PIN, LOW);
         digitalWrite(LED_BUILTIN, HIGH);
     }
 
     if (pwm_knob <= 2008 && pwm_knob >= 1948)
     {
         // +/-30 of 1978 which is the pwm value when knob is turned clockwise.Twisting the knob will
-        digitalWrite(OUTPUT_INTERRUPT_PIN, LOW);
+        digitalWrite(OUTPUT_INTERRUPT_PIN, HIGH);
         digitalWrite(LED_BUILTIN, LOW);
     }
 }
