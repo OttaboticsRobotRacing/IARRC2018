@@ -13,7 +13,7 @@ Arduino Master
 
 // servo and speed controller pins
 const int STEERING_PIN = 9;
-const int SPEED_PIN = 10;
+const int SPEED_PIN = 5;
 
 const int ESC_DIRECTION_PIN = 8;
 const int ESC_RESET_PIN = 7;
