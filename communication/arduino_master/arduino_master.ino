@@ -113,6 +113,8 @@ void estop_interrupt()
     angle = 0;
     //setSpeed(speed);
     //setAngle(angle);
+    analogWrite(SPEED_PIN, 0);
+    digitalWrite(LED_BUILTIN, HIGH);
 
     estop_triggered = true;
 

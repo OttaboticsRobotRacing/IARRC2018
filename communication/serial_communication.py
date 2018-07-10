@@ -3,14 +3,16 @@ import time
 import threading
 import queue
 from curtsies import Input # pip3 install curtsies
-from . import serial_constants
 import logging
+
+SERIAL_PORT = '/dev/ttyUSB0'
+BAUD_RATE = 9600
 
 def read_serial_thread(q):
     connected = False
 
     try:
-        ser = serial.Serial(serial_constants.SERIAL_PORT, serial_constants.BAUD_RATE, timeout=0)
+        ser = serial.Serial(SERIAL_PORT, BAUD_RATE, timeout=0)
 
         while not connected:
             connected = True
@@ -33,7 +35,7 @@ def read_serial():
     connected = False
 
     try:
-        ser = serial.Serial(serial_constants.SERIAL_PORT, serial_constants.BAUD_RATE, timeout=0)
+        ser = serial.Serial(SERIAL_PORT, BAUD_RATE, timeout=0)
 
         while not connected:
             connected = True
@@ -53,7 +55,7 @@ def write_serial_message(message):
     logging.debug('writing message: %s' % message)
 
     try:
-        ser = serial.Serial(serial_constants.SERIAL_PORT, serial_constants.BAUD_RATE, timeout=0)
+        ser = serial.Serial(SERIAL_PORT, BAUD_RATE, timeout=0)
     except serial.serialutil.SerialException:
         logging.debug('Serial port not found')
         return
@@ -65,28 +67,6 @@ def write_serial_message(message):
 
     ser.close()
 
-
-def write_serial_interactive():
-    with Input(keynames='curses') as input_generator:
-        for e in input_generator:
-            message = ''
-
-            if e == 'w':
-                message = 'w'
-            if e == 'a':
-                message = 'a'
-            if e == 's':
-                message = 's'
-            if e == 'd':
-                message = 'd'
-
-            if message != '':
-                write_serial_message(message)
-                print('\r')
-
-
-            if e == 'q':
-                return
 
 def start_reader_thread():
     q = queue.Queue()

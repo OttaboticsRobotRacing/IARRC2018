@@ -8,8 +8,8 @@ Arduino slave 0
 
 #include <Wire.h>
 
-const int RC_TRIGGER_PIN = 10;
-const int RC_KNOB_PIN = 9;
+const int RC_TRIGGER_PIN = 10; // channel 2
+const int RC_KNOB_PIN = 9; // channel 1
 const int OUTPUT_INTERRUPT_PIN = 6;
 
 const int FAULT_PIN_0 = 3;
@@ -66,23 +66,25 @@ void check_rc()
     int pwm_trig = pulseIn(RC_TRIGGER_PIN, HIGH, 20000); //Channel 2
     int pwm_knob = pulseIn(RC_KNOB_PIN, HIGH, 20000); //Channel 1
 
-    /*
+
     Serial.print("pwm_trig ");
     Serial.println(pwm_trig);
     Serial.print("pwm_knob ");
     Serial.println(pwm_knob);
-    */
 
-    if (pwm_trig <= 953 || pwm_trig >= 1113)
+
+    if (pwm_trig < 1700)
     {
         // +/-30 of 983 which is the pwm value when trigger is pressed. The trigger is pressed to run the car.
+        Serial.println("STOP");
         digitalWrite(OUTPUT_INTERRUPT_PIN, LOW);
         digitalWrite(LED_BUILTIN, HIGH);
     }
 
-    if (pwm_knob <= 2008 && pwm_knob >= 1948)
+    if (pwm_knob <= 2008 && pwm_knob >= 1700)
     {
         // +/-30 of 1978 which is the pwm value when knob is turned clockwise.Twisting the knob will
+        Serial.println("RESET");
         digitalWrite(OUTPUT_INTERRUPT_PIN, HIGH);
         digitalWrite(LED_BUILTIN, LOW);
     }
@@ -137,7 +139,7 @@ void send_heartbeat()
 void loop()
 {
     check_rc();
-    check_fault_pins();
+    //check_fault_pins();
 
     send_heartbeat();
 }
