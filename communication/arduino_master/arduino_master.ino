@@ -366,8 +366,8 @@ void loop()
     processInput(inputString);
 
     digitalWrite(ESC_DIRECTION_PIN, HIGH);
-    setAngle(angle);
-    setSpeed(speed);
+    //setAngle(angle);
+    //setSpeed(speed);
 
 
 
@@ -376,7 +376,7 @@ void loop()
 
 
 
-    check_fault_pins();
+    //check_fault_pins();
 
 
 
