@@ -1,14 +1,15 @@
-from . import constants
 import cv2
 import numpy as np
 import math
-from . import utility
+import utility
 import logging
 
+NUMBER_OF_SUBDIVISIONS = 5
+CLUSTER_MIN_SIZE = 10
 
 def compute_turn_angle(image):
     # segment the frame horizontally
-    subframe_list = split_frame(image, constants.NUMBER_OF_SUBDIVISIONS)
+    subframe_list = split_frame(image, NUMBER_OF_SUBDIVISIONS)
 
     # get line segments
     # 2D array - list of lists of line segments
@@ -45,7 +46,7 @@ def compute_turn_angle(image):
 
     # generate weights for each subframe
     #num_nonzero_segment_lists = sum(len(x) > 0 for x in list_of_segment_lists)
-    weight_list = generate_weight_list(constants.NUMBER_OF_SUBDIVISIONS)
+    weight_list = generate_weight_list(NUMBER_OF_SUBDIVISIONS)
     #weight_list = generate_weight_list(num_nonzero_segment_lists)
 
 
@@ -180,7 +181,7 @@ def cluster_by_proximity(image, line_list):
 
     filtered_clusters = []
     for cluster in clusters:
-        if len(cluster) >= constants.CLUSTER_MIN_SIZE:
+        if len(cluster) >= CLUSTER_MIN_SIZE:
             filtered_clusters.append(cluster)
 
     return image, filtered_clusters

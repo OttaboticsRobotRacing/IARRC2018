@@ -1,7 +1,7 @@
 import cv2
-from . import constants
 import numpy as np
 
+IMAGE_HEIGHT = 480
 
 def apply_preprocessing(image):
     """
@@ -13,7 +13,7 @@ def apply_preprocessing(image):
     image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     image = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
     # resize the image to height 480
-    image = resize_image(image, constants.IMAGE_HEIGHT)
+    image = resize_image(image, IMAGE_HEIGHT)
     # apply gaussian blur
     image = cv2.GaussianBlur(image, (3, 3), 0)
 
@@ -42,6 +42,7 @@ def apply_perspective_transformation_old(image):
     final_bottom_left = [325, 420]
     final_bottom_right = [420, 325]
 
+    '''
     if constants.DEBUG_MESSAGES:
         print("DEBUG:: Utility.apply_perspective_transformation()")
         print("DEBUG:: height = %s" % height)
@@ -60,6 +61,7 @@ def apply_perspective_transformation_old(image):
         cv2.putText(image, "BR", tuple(final_bottom_right), cv2.FONT_HERSHEY_COMPLEX, 0.5, (0, 255, 0))
 
         cv2.imshow("DEBUG-apply_perspective_transformation", image)
+    '''
 
     # [top-left], [top-right], [bottom-left], [bottom-right]
     final_pts = np.float32([[0, 0],
