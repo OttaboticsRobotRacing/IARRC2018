@@ -9,7 +9,8 @@ cap.set(cv2.CAP_PROP_EXPOSURE, 0.01)
 
 # Define the codec and create VideoWriter object
 fourcc = cv2.VideoWriter_fourcc(*'XVID')
-output_file = '/media/usb/output' + str(time.time()).split('.')[0] + '.avi'
+output_file = './' + str(time.time()).split('.')[0] + '.avi'
+print(output_file)
 
 out = cv2.VideoWriter(output_file,fourcc, 20.0, (640,480))
 
