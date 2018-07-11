@@ -16,7 +16,7 @@ const int STEERING_PIN = 9;
 const int SPEED_PIN = 5;
 
 const int ESC_DIRECTION_PIN = 8;
-const int ESC_RESET_PIN = 7;
+//const int ESC_RESET_PIN = 7;
 
 // fault flags
 const int FAULT_PIN_0 = 3;
@@ -40,6 +40,9 @@ const int LED_DELAY = 5;
 volatile bool estop_triggered = false;
 
 const int I2C_SLAVE_0_MESSAGE_SIZE = 2;
+
+const int FAULT_PIN_0_LED = 6;
+const int FAULT_PIN_1_LED = 7;
 
 Servo steering_servo;
 
@@ -134,6 +137,21 @@ void setup()
     pinMode(FAULT_PIN_0, INPUT);
     pinMode(FAULT_PIN_1, INPUT);
 
+    pinMode(FAULT_PIN_0_LED, OUTPUT);
+    pinMode(FAULT_PIN_1_LED, OUTPUT);
+    digitalWrite(FAULT_PIN_0_LED, HIGH);
+    digitalWrite(FAULT_PIN_1_LED, HIGH);
+    delay(500);
+    digitalWrite(FAULT_PIN_0_LED, LOW);
+    digitalWrite(FAULT_PIN_1_LED, LOW);
+    delay(500);
+    digitalWrite(FAULT_PIN_0_LED, HIGH);
+    digitalWrite(FAULT_PIN_1_LED, HIGH);
+    delay(500);
+    digitalWrite(FAULT_PIN_0_LED, LOW);
+    digitalWrite(FAULT_PIN_1_LED, LOW);
+    delay(500);
+
     pinMode(ESC_DIRECTION_PIN, OUTPUT);
 
     digitalWrite(ESC_DIRECTION_PIN, LOW);
@@ -168,21 +186,31 @@ void setSpeed(int s)
 
 void check_fault_pins()
 {
+    digitalWrite(FAULT_PIN_0_LED, LOW);
+    digitalWrite(FAULT_PIN_1_LED, LOW);
 
     if (digitalRead(FAULT_PIN_0) == HIGH && digitalRead(FAULT_PIN_1) == HIGH)
     {
+        digitalWrite(FAULT_PIN_0_LED, HIGH);
+        digitalWrite(FAULT_PIN_1_LED, HIGH);
         Serial.println("High High - Under voltage");
     }
     else if (digitalRead(FAULT_PIN_0) == HIGH && digitalRead(FAULT_PIN_1) == LOW)
     {
+        digitalWrite(FAULT_PIN_0_LED, HIGH);
+        digitalWrite(FAULT_PIN_1_LED, LOW);
         Serial.println("High LOW - Over temperature, overheating warning");
     }
     else if (digitalRead(FAULT_PIN_0) == LOW && digitalRead(FAULT_PIN_1) == HIGH)
     {
+        digitalWrite(FAULT_PIN_0_LED, LOW);
+        digitalWrite(FAULT_PIN_1_LED, HIGH);
         Serial.println ("LOW HIGH - Short circuit");
     }
     else if(digitalRead(FAULT_PIN_0) == LOW && digitalRead(FAULT_PIN_1) == LOW)
     {
+        digitalWrite(FAULT_PIN_0_LED, LOW);
+        digitalWrite(FAULT_PIN_1_LED, LOW);
         Serial.println ("LOW LOW - No fault");
     }
 }
@@ -377,7 +405,7 @@ void loop()
 
 
 
-    //check_fault_pins();
+    check_fault_pins();
 
 
 
