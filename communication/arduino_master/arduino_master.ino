@@ -136,6 +136,8 @@ void setup()
 
     pinMode(ESC_DIRECTION_PIN, OUTPUT);
 
+    digitalWrite(ESC_DIRECTION_PIN, LOW);
+
     Wire.begin();
 
     prev_time = millis();
@@ -365,7 +367,6 @@ void loop()
 
     processInput(inputString);
 
-    digitalWrite(ESC_DIRECTION_PIN, HIGH);
     //setAngle(angle);
     //setSpeed(speed);
 
