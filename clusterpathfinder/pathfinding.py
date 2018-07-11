@@ -1,7 +1,7 @@
 import cv2
 import numpy as np
 import math
-import utility
+from . import utility
 import logging
 
 NUMBER_OF_SUBDIVISIONS = 5
@@ -15,7 +15,8 @@ def compute_turn_angle(image):
     # 2D array - list of lists of line segments
     list_of_segment_lists = []
     for subframe in subframe_list:
-        list_of_segment_lists.append(get_line_segments(subframe))
+        line_segments, _ = get_line_segments(subframe)
+        list_of_segment_lists.append(line_segments)
 
     # cluster lines by angle
     clusters_list = []
@@ -149,10 +150,11 @@ def get_line_segments(image):
             x2 = line[0][2]
             y2 = line[0][3]
             line_object_list.append(Line(x1, y1, x2, y2))
+            cv2.line(image, (x1, y1), (x2, y2), (0, 255, 0), 2)
     except:
         pass
 
-    return line_object_list
+    return line_object_list, image
 
 
 def cluster_by_angle(line_list):
