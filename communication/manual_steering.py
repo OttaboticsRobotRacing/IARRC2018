@@ -24,6 +24,8 @@ def write_serial_interactive():
                 if angle <= MAX_RIGHT:
                     angle += 10
                 message = 'a' + str(angle)
+            if e == 'r':
+                message = 'r'
 
             if message != '':
                 serial_communication.write_serial_message(message)
