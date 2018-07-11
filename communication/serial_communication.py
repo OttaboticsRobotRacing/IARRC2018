@@ -64,6 +64,7 @@ def write_serial_message(message):
     ser.open()
 
     ser.write(message)
+    time.sleep(0.2)
 
     ser.close()
 
