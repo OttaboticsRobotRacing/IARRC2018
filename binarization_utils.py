@@ -98,7 +98,17 @@ def binarize(img, verbose=False):
 
     # apply a light morphology to "fill the gaps" in the binary image
     kernel = np.ones((5, 5), np.uint8)
-    closing = cv2.morphologyEx(binary.astype(np.uint8), cv2.MORPH_CLOSE, kernel)
+    kernel3 = np.ones((3, 3), np.uint8)
+    kernel1 = np.array(([0,0,0],[1,1,1],[0,0,0]),dtype=np.uint8)
+    closing = cv2.morphologyEx(binary.astype(np.uint8), cv2.MORPH_OPEN, kernel)
+    closing = cv2.erode(closing, kernel, iterations=1)
+    closing = cv2.erode(closing, kernel3, iterations=1)
+    closing = cv2.morphologyEx(closing, cv2.MORPH_CLOSE, kernel)
+    closing = cv2.dilate(closing, kernel3, iterations=5)
+    closing = cv2.morphologyEx(closing, cv2.MORPH_CLOSE, kernel)
+    closing = cv2.morphologyEx(closing, cv2.MORPH_CLOSE, kernel3)
+
+
 
     if verbose:
         f, ax = plt.subplots(2, 3)

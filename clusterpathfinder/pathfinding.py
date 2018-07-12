@@ -118,8 +118,8 @@ def get_line_segments(image):
     :return:
     """
 
-    image = cv2.GaussianBlur(image, (5, 5), 0)
-    image = cv2.GaussianBlur(image, (5, 5), 0)
+    #image = cv2.GaussianBlur(image, (5, 5), 0)
+    #image = cv2.GaussianBlur(image, (5, 5), 0)
     image = cv2.GaussianBlur(image, (5, 5), 0)
 
     mask_edges = cv2.Canny(image, 50, 100, apertureSize=3)

@@ -4,6 +4,15 @@ from clusterpathfinder import pathfinding as pathfinder
 from calibration import CameraCalibration
 import binarization_utils
 import matplotlib.pyplot as plt
+import line_utils
+from line_utils import Line
+from globals import xm_per_pix, time_window
+
+global line_lt, line_rt, processed_frames
+
+line_lt = Line(buffer_len=time_window)  # line on the left of the lane
+line_rt = Line(buffer_len=time_window) # line on the right of the lane
+processed_frames = 0
 
 def debug_roi( img , src_pts , dst_pts , debug=False ):
     '''debug_region of interest
@@ -66,13 +75,14 @@ def region_of_interest( img ):
         dtype=np.float32)
     '''
 
-    height_factor = 0.4
-    width_factor = 0.1
+    height_factor = 0.3
+    width_factor = 0.2
+    lower_width_factor = 0.3
 
     vertices = np.array([
         [((0.5+width_factor)*imshape[1],    height_factor*imshape[0]), # top right
-         (imshape[1],                       imshape[0]), # bottom right
-         (0,                                imshape[0]), # bottom left
+         (imshape[1]+imshape[1]*lower_width_factor,                       imshape[0]), # bottom right
+         (0-imshape[1]*lower_width_factor,                                imshape[0]), # bottom left
          ((0.5-width_factor)*imshape[1],    height_factor*imshape[0])]], # top left
         dtype=np.float32)
 
@@ -131,8 +141,82 @@ def filter_hsv_colour(img, upper_thresh, lower_thresh):
     return mask, res
 
 
+def compute_offset_from_center(line_lt, line_rt, frame_width):
+    """
+    Compute offset from center of the inferred lane.
+    The offset from the lane center can be computed under the hypothesis that the camera is fixed
+    and mounted in the midpoint of the car roof. In this case, we can approximate the car's deviation
+    from the lane center as the distance between the center of the image and the midpoint at the bottom
+    of the image of the two lane-lines detected.
+    :param line_lt: detected left lane-line
+    :param line_rt: detected right lane-line
+    :param frame_width: width of the undistorted frame
+    :return: inferred offset
+    """
+    if line_lt.detected and line_rt.detected:
+        line_lt_bottom = np.mean(line_lt.all_x[line_lt.all_y > 0.95 * line_lt.all_y.max()])
+        line_rt_bottom = np.mean(line_rt.all_x[line_rt.all_y > 0.95 * line_rt.all_y.max()])
+        lane_width = line_rt_bottom - line_lt_bottom
+        midpoint = frame_width / 2
+        offset_pix = abs((line_lt_bottom + lane_width / 2) - midpoint)
+        offset_meter = xm_per_pix * offset_pix
+    else:
+        offset_meter = -1
+
+    return offset_meter
+
+
+def prepare_out_blend_frame(blend_on_road, img_binary, img_birdeye, img_fit, line_lt, line_rt, offset_meter):
+    """
+    Prepare the final pretty pretty output blend, given all intermediate pipeline images
+    :param blend_on_road: color image of lane blend onto the road
+    :param img_binary: thresholded binary image
+    :param img_birdeye: bird's eye view of the thresholded binary image
+    :param img_fit: bird's eye view with detected lane-lines highlighted
+    :param line_lt: detected left lane-line
+    :param line_rt: detected right lane-line
+    :param offset_meter: offset from the center of the lane
+    :return: pretty blend with all images and stuff stitched
+    """
+    h, w = blend_on_road.shape[:2]
+
+    thumb_ratio = 0.2
+    thumb_h, thumb_w = int(thumb_ratio * h), int(thumb_ratio * w)
+
+    off_x, off_y = 20, 15
+
+    # add a gray rectangle to highlight the upper area
+    mask = blend_on_road.copy()
+    mask = cv2.rectangle(mask, pt1=(0, 0), pt2=(w, thumb_h+2*off_y), color=(0, 0, 0), thickness=cv2.FILLED)
+    blend_on_road = cv2.addWeighted(src1=mask, alpha=0.2, src2=blend_on_road, beta=0.8, gamma=0)
+
+    # add thumbnail of binary image
+    thumb_binary = cv2.resize(img_binary, dsize=(thumb_w, thumb_h))
+    thumb_binary = np.dstack([thumb_binary, thumb_binary, thumb_binary]) * 255
+    blend_on_road[off_y:thumb_h+off_y, off_x:off_x+thumb_w, :] = thumb_binary
+
+    # add thumbnail of bird's eye view
+    thumb_birdeye = cv2.resize(img_birdeye, dsize=(thumb_w, thumb_h))
+    thumb_birdeye = np.dstack([thumb_birdeye, thumb_birdeye, thumb_birdeye]) * 255
+    blend_on_road[off_y:thumb_h+off_y, 2*off_x+thumb_w:2*(off_x+thumb_w), :] = thumb_birdeye
+
+    # add thumbnail of bird's eye view (lane-line highlighted)
+    thumb_img_fit = cv2.resize(img_fit, dsize=(thumb_w, thumb_h))
+    blend_on_road[off_y:thumb_h+off_y, 3*off_x+2*thumb_w:3*(off_x+thumb_w), :] = thumb_img_fit
+
+    # add text (curvature and offset info) on the upper right of the blend
+    mean_curvature_meter = np.mean([line_lt.curvature_meter, line_rt.curvature_meter])
+    font = cv2.FONT_HERSHEY_SIMPLEX
+    cv2.putText(blend_on_road, 'Curvature radius: {:.02f}m'.format(mean_curvature_meter), (860, 60), font, 0.9, (255, 255, 255), 2, cv2.LINE_AA)
+    cv2.putText(blend_on_road, 'Offset from center: {:.02f}m'.format(offset_meter), (860, 130), font, 0.9, (255, 255, 255), 2, cv2.LINE_AA)
+
+    return blend_on_road
+
+
+
+
 def main():
-    cap = cv2.VideoCapture('footage/8_edit.avi')
+    cap = cv2.VideoCapture('footage/3_edit.avi')
     '''
     cap = cv2.VideoCapture(1)
     cap.set(cv2.CAP_PROP_FRAME_WIDTH,1280)
@@ -148,6 +232,9 @@ def main():
     yellow_HSV_th_min = np.array([0, 70, 70])
     yellow_HSV_th_max = np.array([50, 255, 255])
 
+    line_lt = Line(buffer_len=time_window)  # line on the left of the lane
+    line_rt = Line(buffer_len=time_window) # line on the right of the lane
+    processed_frames = 0
 
     while cap.isOpened():
         ret, frame = cap.read()
@@ -165,7 +252,6 @@ def main():
 
 
         ### binarize frame ###
-
 
 
 
@@ -190,6 +276,38 @@ def main():
         cv2.imshow('img binary', img_binary)
 
 
+        img_binary_colour = cv2.cvtColor(img_binary, cv2.COLOR_GRAY2BGR)
+        #img_binary_colour = img_binary_colour[:][100:]
+        _, lines = pathfinder.get_line_segments(img_binary_colour)
+        cv2.imshow('lines', lines)
+        turn_angle = pathfinder.compute_turn_angle(img_binary)
+        print('turn angle:', turn_angle)
+
+
+        '''
+        keep_state = False
+
+
+        if processed_frames > 0 and keep_state and line_lt.detected and line_rt.detected:
+            line_lt, line_rt, img_fit = line_utils.get_fits_by_previous_fits(img_binary, line_lt, line_rt, verbose=False)
+        else:
+            line_lt, line_rt, img_fit = line_utils.get_fits_by_sliding_windows(img_binary, line_lt, line_rt, n_windows=9, verbose=False)
+
+        offset_meter = compute_offset_from_center(line_lt, line_rt, frame_width=frame.shape[1])
+        '''
+        #print(offset_meter)
+
+        #Minv = np.zeros(shape=(3, 3))
+
+        # draw the surface enclosed by lane lines back onto the original frame
+        #blend_on_road = line_utils.draw_back_onto_the_road(img, Minv, line_lt, line_rt, keep_state)
+
+        #cv2.imshow('asfdfd', blend_on_road)
+
+        # stitch on the top of final output images from different steps of the pipeline
+        #blend_output = prepare_out_blend_frame(blend_on_road, img_binary, warped, img_fit, line_lt, line_rt, offset_meter)
+
+        #processed_frames += 1
 
         #cv2.imshow('mask', mask)
         #cv2.imshow('res', res)
@@ -197,10 +315,10 @@ def main():
 
 
         cv2.imshow('frame', frame)
-        #cv2.imshow('warped', warped)
+        cv2.imshow('warped', warped)
 
 
-        if cv2.waitKey(1) & 0xFF == ord('q'):
+        if cv2.waitKey(100) & 0xFF == ord('q'):
                 break
 
 
