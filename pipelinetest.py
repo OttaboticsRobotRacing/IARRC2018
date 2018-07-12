@@ -2,6 +2,8 @@ import cv2
 import numpy as np
 from clusterpathfinder import pathfinding as pathfinder
 from calibration import CameraCalibration
+import binarization_utils
+import matplotlib.pyplot as plt
 
 def debug_roi( img , src_pts , dst_pts , debug=False ):
     '''debug_region of interest
@@ -120,13 +122,17 @@ def get_birds_eye_view( img , src_pts , dst_pts ):
     return cv2.warpPerspective(img, M , img_size ), M, Minv
 
 
+def filter_hsv_colour(img, upper_thresh, lower_thresh):
+    hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
 
+    mask = cv2.inRange(hsv, lower_thresh, upper_thresh)
+    res = cv2.bitwise_and(img, img, mask=mask)
 
-
+    return mask, res
 
 
 def main():
-    cap = cv2.VideoCapture('footage/3_edit.avi')
+    cap = cv2.VideoCapture('footage/8_edit.avi')
     '''
     cap = cv2.VideoCapture(1)
     cap.set(cv2.CAP_PROP_FRAME_WIDTH,1280)
@@ -138,6 +144,10 @@ def main():
     D = np.array([[-0.041705903204711826], [0.3677107787593379], [-1.4047363783373128], [1.578157237454529]])
     profile = (DIM, K, D)
     CC = CameraCalibration(profile)
+
+    yellow_HSV_th_min = np.array([0, 70, 70])
+    yellow_HSV_th_max = np.array([50, 255, 255])
+
 
     while cap.isOpened():
         ret, frame = cap.read()
@@ -153,28 +163,44 @@ def main():
 
         img, warped = debug_roi(frame, None, None)
 
+
+        ### binarize frame ###
+
+
+
+
+
+        ### get steering angle v1 ###
+
+        '''
         _, lines = pathfinder.get_line_segments(warped)
-
-        ### get steering angle ###
-
         grey = cv2.cvtColor(warped, cv2.COLOR_BGR2GRAY)
 
         turn_angle = pathfinder.compute_turn_angle(grey)
         print('turn angle:', turn_angle)
 
+        cv2.imshow('lines', lines)
+        '''
+
+        ### get steering angle v2 ###
+
+        #mask, res = filter_hsv_colour(img, yellow_HSV_th_max, yellow_HSV_th_min)
+
+        img_binary = binarization_utils.binarize(warped, verbose=False)
+        cv2.imshow('img binary', img_binary)
 
 
 
-
+        #cv2.imshow('mask', mask)
+        #cv2.imshow('res', res)
 
 
 
         cv2.imshow('frame', frame)
         #cv2.imshow('warped', warped)
-        cv2.imshow('lines', lines)
 
 
-        if cv2.waitKey(200) & 0xFF == ord('q'):
+        if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
 
 
