@@ -77,7 +77,7 @@ def region_of_interest( img ):
 
     height_factor = 0.3
     width_factor = 0.2
-    lower_width_factor = 0.3
+    lower_width_factor = 0.4
 
     vertices = np.array([
         [((0.5+width_factor)*imshape[1],    height_factor*imshape[0]), # top right
@@ -276,12 +276,34 @@ def main():
         cv2.imshow('img binary', img_binary)
 
 
+        ### contours ###
+        _, contours, hierarchy = cv2.findContours(img_binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+
         img_binary_colour = cv2.cvtColor(img_binary, cv2.COLOR_GRAY2BGR)
+
+        if len(contours) > 0:
+            for cnt in contours:
+                if cnt.size >= 5:
+                    epsilon = 0.1 * cv2.arcLength(cnt, True)
+                    approx = cv2.approxPolyDP(cnt, epsilon, True)
+
+                    ellipse = cv2.fitEllipse(cnt)
+                    cv2.ellipse(img_binary_colour, ellipse, (255,0,0), 5)
+
+                    rect = cv2.minAreaRect(cnt)
+                    box = cv2.boxPoints(rect)
+                    box = np.int0(box)
+                    cv2.drawContours(img_binary_colour, [box], 0, (0,0,255), 5)
+
+
+        ### basic pathfinder ###
         #img_binary_colour = img_binary_colour[:][100:]
         _, lines = pathfinder.get_line_segments(img_binary_colour)
-        cv2.imshow('lines', lines)
-        turn_angle = pathfinder.compute_turn_angle(img_binary)
+        turn_angle = pathfinder.compute_turn_angle(img_binary_colour)
         print('turn angle:', turn_angle)
+
+        cv2.putText(lines, str(int(turn_angle)), (200, 450), cv2.FONT_HERSHEY_SIMPLEX, 4, (0,255,0), 4, cv2.LINE_AA)
+        cv2.imshow('lines', lines)
 
 
         '''
@@ -318,7 +340,7 @@ def main():
         cv2.imshow('warped', warped)
 
 
-        if cv2.waitKey(100) & 0xFF == ord('q'):
+        if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
 
 
