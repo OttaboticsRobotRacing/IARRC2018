@@ -7,6 +7,10 @@ import matplotlib.pyplot as plt
 import line_utils
 from line_utils import Line
 from globals import xm_per_pix, time_window
+import communication.serial_communication as comm
+#from trafficlightdetector import TrafficLightDetector
+import logging
+from glob import glob
 
 global line_lt, line_rt, processed_frames
 
@@ -216,9 +220,14 @@ def prepare_out_blend_frame(blend_on_road, img_binary, img_birdeye, img_fit, lin
 
 
 def main():
-    cap = cv2.VideoCapture('footage/3_edit.avi')
+    logging.basicConfig(level=logging.DEBUG)
+
+    cap = cv2.VideoCapture('footage/7_edit.avi')
+
     '''
     cap = cv2.VideoCapture(1)
+    cap.set(cv2.CAP_PROP_AUTO_EXPOSURE, 0.25)
+    cap.set(cv2.CAP_PROP_EXPOSURE, 0.01)
     cap.set(cv2.CAP_PROP_FRAME_WIDTH,1280)
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT,720)
     '''
@@ -236,8 +245,38 @@ def main():
     line_rt = Line(buffer_len=time_window) # line on the right of the lane
     processed_frames = 0
 
+    ### traffic light detector setup ###
+    '''
+    red_bound = ([0,0,0], [255,255,360])
+    green_bound = ([0,0,0], [255,255,360])
+    color_bounds = {'red':red_bound, 'green':green_bound}
+
+    reference_images = []
+    reference_paths = glob('./reference/*.jpg')
+    for path in reference_paths:
+        reference_images.append(cv2.imread(path))
+
+    TLD = TrafficLightDetector(reference_images, color_bounds)
+    '''
+
     while cap.isOpened():
         ret, frame = cap.read()
+
+        ### traffic light detection
+        # TODO: replace placeholder values
+        '''
+        while True:
+            state = TLD.get_state(frame)
+
+            logging.debug('traffic light state:', str(state))
+
+            if state == 'green':
+                comm.write_serial_message('s30')
+                break
+        '''
+
+
+
 
         frame = CC.undistort(frame)
 
@@ -301,6 +340,12 @@ def main():
         _, lines = pathfinder.get_line_segments(img_binary_colour)
         turn_angle = pathfinder.compute_turn_angle(img_binary_colour)
         print('turn angle:', turn_angle)
+
+        turn_angle += 90
+
+        turn_angle_message = str('a%d' % int(turn_angle))
+        comm.write_serial_message(turn_angle_message)
+        #comm.write_serial_message('s50')
 
         cv2.putText(lines, str(int(turn_angle)), (200, 450), cv2.FONT_HERSHEY_SIMPLEX, 4, (0,255,0), 4, cv2.LINE_AA)
         cv2.imshow('lines', lines)

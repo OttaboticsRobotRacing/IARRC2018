@@ -88,6 +88,12 @@ def binarize(img, verbose=False):
     HSV_yellow_mask = thresh_frame_in_HSV(blurred, yellow_HSV_th_min, yellow_HSV_th_max, verbose=False)
     binary = np.logical_or(binary, HSV_yellow_mask)
 
+    # highlight orange cones
+    orange_HSV_th_min = np.array([0, 220, 231])
+    orange_HSV_th_max = np.array([47, 255, 359])
+    HSV_orange_mask = thresh_frame_in_HSV(blurred, orange_HSV_th_min, orange_HSV_th_max, verbose=False)
+    binary = np.logical_or(binary, HSV_orange_mask)
+
     # highlight white lines by thresholding the equalized frame
     eq_white_mask = get_binary_from_equalized_grayscale(blurred)
     binary = np.logical_or(binary, eq_white_mask)

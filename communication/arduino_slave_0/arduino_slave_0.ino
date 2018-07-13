@@ -15,6 +15,16 @@ const int OUTPUT_INTERRUPT_PIN = 6;
 const int FAULT_PIN_0 = 3;
 const int FAULT_PIN_1 = 4;
 
+// define  ultrasonic sensor pin numbers
+const int echo1 = 2;
+const int trig1 = 5;
+const int echo2 = 7;
+const int trig2 = 8;
+const int echo3 = 11;
+const int trig3 = 12;
+
+const int threshold_D = 100; // in cm
+
 const int I2C_DEVICE_ID = 0;
 
 char* fault_pin_status_message = "00";
@@ -30,6 +40,13 @@ void setup()
     pinMode(RC_KNOB_PIN, INPUT);
     pinMode(RC_TRIGGER_PIN, INPUT);
     pinMode(OUTPUT_INTERRUPT_PIN, OUTPUT);
+
+    pinMode(trig1, OUTPUT); // Sets the trigPin as an Output
+    pinMode(trig2, OUTPUT);
+    pinMode(trig3, OUTPUT);
+    pinMode(echo1, INPUT); // Sets the echoPin as an Input
+    pinMode(echo2, INPUT);
+    pinMode(echo3, INPUT);
 
     pinMode(LED_BUILTIN, OUTPUT);
 
@@ -131,14 +148,70 @@ void send_heartbeat()
         prev_time = millis();
 
         digitalWrite(LED_BUILTIN, HIGH);
-        delay(100);
-        digitalWrite(LED_BUILTIN, LOW);
+            delay(100);
+            digitalWrite(LED_BUILTIN, LOW);
+        }
     }
+
+void check_distance()
+{
+    long timex;
+    long time1;
+    long time2;
+    long time3;
+    int D1; // D represents distance
+    int D2;
+    int D3;
+
+    // Clears the trigPin
+    //0.034cm/microsecond
+
+    digitalWrite(trig1, LOW);
+    delayMicroseconds(2);
+    digitalWrite(trig1, HIGH);
+    delayMicroseconds(10);
+    digitalWrite(trig1, LOW);
+    time1 = pulseIn(echo1, HIGH);
+    D1= time1*0.034/2;
+
+    digitalWrite(trig2, LOW);
+    delayMicroseconds(2);
+    digitalWrite(trig2, HIGH);
+    delayMicroseconds(10);
+    digitalWrite(trig2, LOW);
+    time2 = pulseIn(echo2, HIGH);
+    D2= time2*0.034/2;
+
+    digitalWrite(trig3, LOW);
+    delayMicroseconds(2);
+    digitalWrite(trig3, HIGH);
+    delayMicroseconds(10);
+    digitalWrite(trig3, LOW);
+    time3 = pulseIn(echo3, HIGH);
+    D3 = time3 * 0.034 / 2;
+
+    // Compares data with threshold value
+    if ((D1<= threshold_D && D2<= threshold_D)||(D1<= threshold_D && D3<= threshold_D)||(D2<= threshold_D && D3<= threshold_D)){
+        digitalWrite(OUTPUT_INTERRUPT_PIN, LOW);
+    }
+    else
+    {
+        digitalWrite(OUTPUT_INTERRUPT_PIN, HIGH);
+    }
+
+    // Prints the distance on the Serial Monitor
+    Serial.print("D1: ");
+    Serial.println(D1);
+    Serial.print("D2: ");
+    Serial.println(D2);
+    Serial.print("D3: ");
+    Serial.println(D3);
 }
 
 void loop()
 {
     check_rc();
+    //check_distance();
     //check_fault_pins();
 
     send_heartbeat();
